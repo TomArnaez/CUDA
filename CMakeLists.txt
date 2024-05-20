@@ -36,8 +36,7 @@ include(FindCUDAToolkit REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 file(GLOB SRC_FILES "src/*.cpp")
-set_source_files_properties(${SRC_FILES} PROPERTIES LANGUAGE CUDA)
 
 add_executable(MyExecutable ${SRC_FILES})
 target_compile_options(MyExecutable PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CUDA_NVCC_FLAGS}>)
-set_target_properties(MyExecutable PROPERTIES CUDA_ARCHITECTURES OFF) # Not sure abut this setting
+set_target_properties(MyExecutable PROPERTIES CUDA_SEPARABLE_COMPILATION ON CUDA_ARCHITECTURES OFF) # Not sure abut this setting

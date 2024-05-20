@@ -22,10 +22,8 @@ set(CMAKE_CUDA_EXTENSIONS OFF)
 # Dependencies
 ###############################################################################
 
-##########
-#  CUDA  #
-##########
-
+find_package(OpenCV REQUIRED)
+find_package(tl-expected REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 ###############################################################################
@@ -39,8 +37,8 @@ set_source_files_properties(${HEADER_FILES} PROPERTIES LANGUAGE CUDA)
 set_source_files_properties(${SRC_FILES} PROPERTIES LANGUAGE CUDA)
 
 add_library(NvOF SHARED ${SOURCE_FILES} ${HEADER_FILES})
+target_link_libraries(NvOF PUBLIC tl::expected)
 set_target_properties(NvOF PROPERTIES CUDA_ARCHITECTURES OFF) # Not sure abut this setting
 
 add_executable (demo src/main.cpp)
-target_link_libraries (demo NvOF)
-set_target_properties(demo PROPERTIES CUDA_ARCHITECTURES OFF) # Not sure abut this setting
+target_link_libraries (demo PUBLIC NvOF ${OpenCV_LIBS})

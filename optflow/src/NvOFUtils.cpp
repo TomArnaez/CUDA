@@ -31,7 +31,7 @@
 #include <sstream>
 #include <iomanip>
 #include "FreeImage.hpp"
-#include "NvOFUtils.h"
+#include "NvOFUtils.hpp"
 
 #define UNKNOWN_FLOW_THRESH 1e9
 

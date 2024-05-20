@@ -1,40 +1,40 @@
-#include <corrections.hpp>
+#include <corrections.cuh>
 
 #include <driver_types.h>
 #include <thrust/transform.h>
 #include <thrust/functional.h>
 
-DarkCorrection::DarkCorrection(thrust::device_vector<u16> darkMap, u16 offset)
+DarkCorrection::DarkCorrection(thrust::device_vector<unsigned short> darkMap, unsigned short offset)
 	: offset(offset), darkMap(darkMap) {
 }
 
-void DarkCorrection::run(thrust::device_vector<u16>& input) {
-	u16 offset = this->offset;
+void DarkCorrection::run(thrust::device_vector<unsigned short>& input) {
+	unsigned short offset = this->offset;
 	thrust::transform(
 		input.begin(), input.end(),
 		darkMap.begin(),
 		input.begin(),
-		[offset] __device__(u16 x, u16 y) {
+		[offset] __device__(unsigned short x, unsigned short y) {
 		return (x - y) + offset;
 	});
 }
 
-GainCorrection::GainCorrection(thrust::device_vector<u16> gainMap) {
+GainCorrection::GainCorrection(thrust::device_vector<unsigned short> gainMap) {
     normaliseGainMap(gainMap);
 }
 
-void GainCorrection::run(thrust::device_vector<u16>& input) {
+void GainCorrection::run(thrust::device_vector<unsigned short>& input) {
 	thrust::transform(
 		input.begin(), input.end(),
 		normedGainMap.begin(),
 		input.begin(),
-		[] __device__(u16 val, double normedVal) {
+		[] __device__(unsigned short val, double normedVal) {
 		return val * normedVal;
 	}
 	);
 }
 
-void GainCorrection::normaliseGainMap(thrust::device_vector<u16> gainMap) {
+void GainCorrection::normaliseGainMap(thrust::device_vector<unsigned short> gainMap) {
 	double sum = thrust::reduce(gainMap.begin(), gainMap.end(), unsigned long long(0), thrust::plus<unsigned long long>());
 	double mean = sum / gainMap.size();
 
@@ -43,15 +43,15 @@ void GainCorrection::normaliseGainMap(thrust::device_vector<u16> gainMap) {
 	thrust::transform(
 		gainMap.begin(), gainMap.end(),
 		normedGainMap.begin(),
-		[mean] __device__(u16 val) {
+		[mean] __device__(unsigned short val) {
 		return  double(mean) / double(val);
 	});
 }
 
 constexpr size_t DEFECT_CORRECTION_KERNEL_SIZE = 3;
-__constant__ u16 defectCorrectionKernel[DEFECT_CORRECTION_KERNEL_SIZE * DEFECT_CORRECTION_KERNEL_SIZE];
+__constant__ unsigned short defectCorrectionKernel[DEFECT_CORRECTION_KERNEL_SIZE * DEFECT_CORRECTION_KERNEL_SIZE];
 
-__global__ static void averageNeighboursKernel(u16* input, const u16* defectMap, int width, int height, int kernelSize) {
+__global__ static void averageNeighboursKernel(unsigned short* input, const unsigned short* defectMap, int width, int height, int kernelSize) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 	int kernelRadius = DEFECT_CORRECTION_KERNEL_SIZE / 2;
@@ -78,24 +78,24 @@ __global__ static void averageNeighboursKernel(u16* input, const u16* defectMap,
 		input[y * width + x] = sum / count;
 }
 
-DefectCorrection::DefectCorrection(Config config, thrust::device_vector<u16> defectMap)
+DefectCorrection::DefectCorrection(Config config, thrust::device_vector<unsigned short> defectMap)
 	: defectMap(defectMap), config(config) {
-	std::vector<u16> kernelTemp = {
+	std::vector<unsigned short> kernelTemp = {
 		1, 1, 1,
 		1, 0, 1,
 		1, 1, 1
 	};
 
-	cudaMemcpyToSymbol(defectCorrectionKernel, kernelTemp.data(), kernelTemp.size() * sizeof(u16));
+	cudaMemcpyToSymbol(defectCorrectionKernel, kernelTemp.data(), kernelTemp.size() * sizeof(unsigned short));
 }
 
-void DefectCorrection::run(thrust::device_vector<u16>& input) {
+void DefectCorrection::run(thrust::device_vector<unsigned short>& input) {
 	dim3 blockSize(16, 16);
 	dim3 gridSize((config.imageWidth + blockSize.x - 1) / blockSize.x,
 		(config.imageHeight + blockSize.y - 1) / blockSize.y);
 
-	u16* rawInputData = thrust::raw_pointer_cast(input.data());
-	u16* rawDefectData = thrust::raw_pointer_cast(defectMap.data());
+	unsigned short* rawInputData = thrust::raw_pointer_cast(input.data());
+	unsigned short* rawDefectData = thrust::raw_pointer_cast(defectMap.data());
 
 	averageNeighboursKernel << <gridSize, blockSize, 0 >> > (
 		rawInputData,

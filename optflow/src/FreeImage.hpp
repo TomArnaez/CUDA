@@ -3,7 +3,7 @@
 //
 // Design and implementation by
 // - Floris van den Berg (flvdberg@wxs.nl)
-// - Hervé Drolon (drolon@infonie.fr)
+// - Hervï¿½ Drolon (drolon@infonie.fr)
 //
 // Contributors:
 // - see changes log named 'Whatsnew.txt', see header of each .h and .cpp file
@@ -23,8 +23,7 @@
 // Use at your own risk!
 // ==========================================================
 
-#ifndef FREEIMAGE_H
-#define FREEIMAGE_H
+#pragma once
 
 // Version information ------------------------------------------------------
 
@@ -1159,5 +1158,3 @@ DLL_API FIBITMAP *DLL_CALLCONV FreeImage_MultigridPoissonSolver(FIBITMAP *Laplac
 #ifdef __cplusplus
 }
 #endif
-
-#endif // FREEIMAGE_H
