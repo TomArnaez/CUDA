@@ -1,6 +1,7 @@
-#include <thrust/device_vector.h>
+#pragma once
 
-#include <types.hpp>
+#include <span>
+#include <thrust/device_vector.h>
 
 class ICorrection {
 public:
@@ -12,6 +13,7 @@ private:
 	thrust::device_vector<unsigned short> darkMap;
 	unsigned short offset;
 public:
+    DarkCorrection(std::span<unsigned short> darkMap, unsigned short offset);
     DarkCorrection(thrust::device_vector<unsigned short> darkMap, unsigned short offset);
 	void run(thrust::device_vector<unsigned short>& input) override;
 };
@@ -27,9 +29,26 @@ public:
 
 class DefectCorrection : public ICorrection {
 private:
+	uint32_t width;
+	uint32_t height;
 	thrust::device_vector<unsigned short> defectMap;
-	Config config;
 public:
-	DefectCorrection(Config config, thrust::device_vector<unsigned short> defectMap);
+	DefectCorrection(thrust::device_vector<unsigned short> defectMap, uint32_t width, uint32_t height);
+	void run(thrust::device_vector<unsigned short>& input) override;
+};
+
+class HistogramEquilisation : public ICorrection {
+private:
+	uint32_t width;
+	uint32_t height;
+	int numBins;
+	void* tempStorage = nullptr;
+	size_t tempStorageBytes = 0;
+	thrust::device_vector<int> histogram;
+	thrust::device_vector<float> normedHistogram;
+	thrust::device_vector<unsigned short> LUT;
+public:
+	HistogramEquilisation(uint32_t width, uint32_t height, uint32_t numBins);
+	~HistogramEquilisation();
 	void run(thrust::device_vector<unsigned short>& input) override;
 };

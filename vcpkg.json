@@ -1,0 +1,7 @@
+{
+    "dependencies": [
+        "opencv",
+        "tl-expected",
+        "vulkan-headers"
+    ]
+}

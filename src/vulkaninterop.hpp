@@ -1,10 +1,12 @@
+
+
 #include <string>
 
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #include <tl/expected.hpp>
 
-#include <core.hpp>
+#include <correctioncore.hpp>
 
 #ifdef _WIN64
 #include <Windows.h>
@@ -43,8 +45,8 @@ private:
 	cudaExternalSemaphore_t outputSemaphore;
 public:
 	VulkanCuda(cudaExternalSemaphore_t inputSemaphore, cudaExternalSemaphore_t outputSemaphore, ExternalBuffer externalBuffer, size_t externalBufferSize, uint32_t width, uint32_t height);
-	~VulkanCuda();
-	static tl::expected<std::unique_ptr<VulkanCuda>, std::string> create(VulkanCudaCreateInfo info);
+	
+	_declspec(dllexport) static tl::expected<std::unique_ptr<VulkanCuda>, std::string> create(VulkanCudaCreateInfo info);
 
 	void setDarkCorrection(std::span<unsigned short> darkMap, unsigned short offset);
 	void setGainCorrection(std::span<unsigned short> gainMap);

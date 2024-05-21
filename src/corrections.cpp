@@ -1,8 +1,14 @@
-#include <corrections.cuh>
+#include <corrections.hpp>
 
+#include <device_launch_parameters.h>
 #include <driver_types.h>
 #include <thrust/transform.h>
 #include <thrust/functional.h>
+
+DarkCorrection::DarkCorrection(std::span<unsigned short> darkMapSpan, unsigned short offset)
+	: offset(offset), darkMap(darkMapSpan.size()) {
+		thrust::copy(darkMapSpan.begin(), darkMapSpan.end(), darkMap.begin());
+}
 
 DarkCorrection::DarkCorrection(thrust::device_vector<unsigned short> darkMap, unsigned short offset)
 	: offset(offset), darkMap(darkMap) {
@@ -78,8 +84,8 @@ __global__ static void averageNeighboursKernel(unsigned short* input, const unsi
 		input[y * width + x] = sum / count;
 }
 
-DefectCorrection::DefectCorrection(Config config, thrust::device_vector<unsigned short> defectMap)
-	: defectMap(defectMap), config(config) {
+DefectCorrection::DefectCorrection(thrust::device_vector<unsigned short> defectMap, uint32_t width, uint32_t height)
+	: defectMap(defectMap), width(width), height(height) {
 	std::vector<unsigned short> kernelTemp = {
 		1, 1, 1,
 		1, 0, 1,
@@ -91,8 +97,8 @@ DefectCorrection::DefectCorrection(Config config, thrust::device_vector<unsigned
 
 void DefectCorrection::run(thrust::device_vector<unsigned short>& input) {
 	dim3 blockSize(16, 16);
-	dim3 gridSize((config.imageWidth + blockSize.x - 1) / blockSize.x,
-		(config.imageHeight + blockSize.y - 1) / blockSize.y);
+	dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
+		(height + blockSize.y - 1) / blockSize.y);
 
 	unsigned short* rawInputData = thrust::raw_pointer_cast(input.data());
 	unsigned short* rawDefectData = thrust::raw_pointer_cast(defectMap.data());
@@ -100,8 +106,49 @@ void DefectCorrection::run(thrust::device_vector<unsigned short>& input) {
 	averageNeighboursKernel << <gridSize, blockSize, 0 >> > (
 		rawInputData,
 		rawDefectData,
-		config.imageWidth,
-		config.imageHeight,
+		width,
+		height,
 		3
 	);
+}
+
+constexpr uint32_t HISTOGRAM_EQ_RANGE = 256;
+
+HistogramEquilisation::HistogramEquilisation(uint32_t width, uint32_t height, uint32_t numBins)
+	: width(width), height(height), numBins(numBins), histogram(numBins), normedHistogram(numBins), LUT(numBins) {
+	// cub::DeviceHistogram::HistogramEven(
+	// 	tempStorage, tempStorageBytes,
+	// 	static_cast<unsigned short*>(nullptr), thrust::raw_pointer_cast(histogram.data()), numBins,
+	// 	0, numBins - 1, width * height
+	// );
+
+	// cudaMalloc(&tempStorage, tempStorageBytes);
+}
+
+void HistogramEquilisation::run(thrust::device_vector<unsigned short>& input) {
+	uint32_t totalPixels = width * height;
+	// // TODO: Bug where the sum of the histogram doesn't equal number of pixels
+	// cub::DeviceHistogram::HistogramEven(
+	// 	tempStorage, tempStorageBytes,
+	// 	thrust::raw_pointer_cast(input.data()), thrust::raw_pointer_cast(histogram.data()), numBins,
+	// 	0, numBins - 1, totalPixels);
+
+	// thrust::inclusive_scan(histogram.begin(), histogram.end(), histogram.begin());
+
+	// thrust::transform(histogram.begin(), histogram.end(), normedHistogram.begin(),
+	// 	[totalPixels] __device__(unsigned int x) -> float {
+	// 	return static_cast<float>(x) / totalPixels;
+	// });
+
+	// thrust::transform(normedHistogram.begin(), normedHistogram.end(), LUT.begin(),
+	// 	[] __device__(float x) -> u16 {
+	// 	return static_cast<u16>(HISTOGRAM_EQ_RANGE * x);
+	// });
+
+	// thrust::gather(input.begin(), input.end(), LUT.begin(), input.begin());
+}
+
+HistogramEquilisation::~HistogramEquilisation() {
+	if (tempStorage)
+		cudaFree(tempStorage);
 }

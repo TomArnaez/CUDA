@@ -82,6 +82,12 @@
         "span": "cpp",
         "typeindex": "cpp",
         "unordered_set": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "*.inc": "cpp",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "string_view": "cpp"
     }
 }

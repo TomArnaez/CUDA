@@ -1,11 +1,11 @@
-#include "core.hpp"
+#include <correctioncore.hpp>
 
-Core::Core(uint32_t width, uint32_t height) {
-    
+Core::Core(uint32_t width, uint32_t height)
+    : width(width), height(height) {
 }
 
-void Core::addCorrection(CorrectionType type, std::unique_ptr<ICorrection> correction) {
-    corrections[static_cast<size_t>(type)] = { std::move(correction), true };
+void Core::addCorrection(CorrectionType type, std::shared_ptr<ICorrection> correction) {
+    corrections[static_cast<size_t>(type)] = { correction, true };
 }
 
 void Core::enableCorrection(CorrectionType type, bool enable) {

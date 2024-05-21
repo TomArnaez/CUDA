@@ -13,23 +13,23 @@ VulkanCuda::VulkanCuda(
     width(width), height(height) {
 }
 
-VulkanCuda::~VulkanCuda() {
-    cudaDestroyExternalSemaphore(inputSemaphore);
-    cudaDestroyExternalSemaphore(outputSemaphore);
-}
+// VulkanCuda::~VulkanCuda() {
+//     cudaDestroyExternalSemaphore(inputSemaphore);
+//     cudaDestroyExternalSemaphore(outputSemaphore);
+// }
 
 tl::expected<std::unique_ptr<VulkanCuda>, std::string> VulkanCuda::create(VulkanCudaCreateInfo info) {
     auto inputSemaphore = cudaVKImportSemaphore(info.inputSemaphoreHandle);
-    if (!inputSemaphore.has_value())
-        return tl::unexpected("Failed to import input semaphore");
+    if (!inputSemaphore.has_value()) 
+        return tl::unexpected(std::string("Failed to import input semaphore with error: ") + cudaGetErrorString(inputSemaphore.error()));
     
     auto outputSemaphore = cudaVKImportSemaphore(info.outputSemaphoreHandle);
     if (!outputSemaphore.has_value())
-        return tl::unexpected("Faild to import output semaphore");
+        return tl::unexpected(std::string("Failed to import output semaphore with error: ") + cudaGetErrorString(outputSemaphore.error()));
 
     auto externalMemoryPair = cudaVKImportMemory(info.bufferMemoryHandle, info.bufferMemorySize);
     if (!externalMemoryPair.has_value())
-        return tl::unexpected("Failed to import external memory");
+        return tl::unexpected(std::string("Failed to import external memory") + cudaGetErrorString(externalMemoryPair.error()));
 
     ExternalBuffer externalBuffer {
         .bufferMemory = externalMemoryPair.value().first,
@@ -37,14 +37,14 @@ tl::expected<std::unique_ptr<VulkanCuda>, std::string> VulkanCuda::create(Vulkan
         .dataPtr = externalMemoryPair.value().second
     };
 
-    return std::make_unique<VulkanCuda>(new VulkanCuda (
+    return std::make_unique<VulkanCuda>(
         inputSemaphore.value(),
         outputSemaphore.value(),
         externalBuffer,
         info.bufferMemorySize,
         info.width,
         info.height
-    ));
+    );
 }
 
 #ifdef _WIN64
@@ -93,7 +93,7 @@ tl::expected<std::pair<cudaExternalMemory_t, CUdeviceptr>, cudaError_t> cudaVKIm
 	cudaExtMemHandleDesc.handle.win32.handle = handle;
 	cudaExtMemHandleDesc.size = size;
 
-    cudaExternalMemory_t mem;
+    cudaExternalMemory_t mem = nullptr;
     cudaError_t err;
 
     if ((err = cudaImportExternalMemory(&mem, &cudaExtMemHandleDesc)) != cudaSuccess)
@@ -104,10 +104,14 @@ tl::expected<std::pair<cudaExternalMemory_t, CUdeviceptr>, cudaError_t> cudaVKIm
 	extMemBufferDesc.size = size;
 	extMemBufferDesc.flags = 0;
 
-    CUdeviceptr devPtr;
+    CUdeviceptr devPtr = 0;
+
+    std::cout << size << std::endl;
+
+    void** test = nullptr;
 
 	// TODO: Proper casting safety
-    if ((err = cudaExternalMemoryGetMappedBuffer((void**)devPtr, mem, &extMemBufferDesc)) != cudaSuccess)
+    if ((err = cudaExternalMemoryGetMappedBuffer(test, mem, &extMemBufferDesc)) != cudaSuccess)
         return tl::unexpected(err);
 
     return std::make_pair(mem, devPtr);
